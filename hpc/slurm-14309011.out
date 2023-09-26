@@ -1,0 +1,49 @@
+/opt/slurm/data/slurmd/job14309011/slurm_script: line 10: ::module: command not found
+/opt/slurm/data/slurmd/job14309011/slurm_script: line 11: ::module: command not found
+
+Jupyter server is running on: c26-06
+Job starts at: Tue Dec 22 10:30:35 EST 2020
+
+Step 1 :
+
+If you are working in NYU campus, please open an iTerm window, run command
+
+ssh -L 47753:localhost:47753 zz737@prince.hpc.nyu.edu
+
+If you are working off campus, you should already have ssh tunneling setup through HPC bastion host, 
+that you can directly login to prince with command
+
+ssh zz737@prince
+
+Please open an iTerm window, run command
+
+ssh -L 47753:localhost:47753 zz737@prince
+
+Step 2:
+
+Keep the iTerm windows in the previouse step open. Now open browser, find the line with
+
+The Jupyter Notebook is running at: c26-06
+
+the URL is something: http://localhost:47753/?token=XXXXXXXX (see your token below)
+
+you should be able to connect to jupyter notebook running remotly on prince compute node with above url
+
+[I 10:30:36.746 NotebookApp] Writing notebook server cookie secret to /state/partition1/job-14309011/jupyter/notebook_cookie_secret
+[I 10:30:38.032 NotebookApp] JupyterLab extension loaded from /share/apps/anaconda3/5.3.1/lib/python3.7/site-packages/jupyterlab
+[I 10:30:38.032 NotebookApp] JupyterLab application directory is /share/apps/anaconda3/5.3.1/share/jupyter/lab
+[I 10:30:38.047 NotebookApp] Serving notebooks from local directory: /home/zz737/projects/fiar/4IAR-RL/hpc
+[I 10:30:38.048 NotebookApp] The Jupyter Notebook is running at:
+[I 10:30:38.048 NotebookApp] http://localhost:47753/?token=27eda4703dba971c752b8ae15541c458b122cd0ae40ef183
+[I 10:30:38.048 NotebookApp] Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).
+[C 10:30:38.048 NotebookApp] 
+    
+    Copy/paste this URL into your browser when you connect for the first time,
+    to login with a token:
+        http://localhost:47753/?token=27eda4703dba971c752b8ae15541c458b122cd0ae40ef183
+[I 10:31:54.380 NotebookApp] 302 GET /?token=27eda4703dba971c752b8ae15541c458b122cd0ae40ef183 (::1) 1.21ms
+[I 10:32:00.346 NotebookApp] Kernel started: f249b67e-4b4d-4782-82d4-43b4f8b9795e
+[I 10:32:01.426 NotebookApp] Adapting to protocol v5.1 for kernel f249b67e-4b4d-4782-82d4-43b4f8b9795e
+[I 10:34:00.432 NotebookApp] Saving file at /try_fiar.ipynb
+[I 10:36:01.346 NotebookApp] Saving file at /try_fiar.ipynb
+[I 10:52:18.547 NotebookApp] Starting buffering for f249b67e-4b4d-4782-82d4-43b4f8b9795e:9805c8d4ed6840958f0795f2522ee7e7

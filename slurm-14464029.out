@@ -1,0 +1,73 @@
+
+Jupyter server is running on: cm021.hpc.nyu.edu
+Job starts at: Sat Jan 29 12:24:05 EST 2022
+
+Step 1 :
+
+If you are working in NYU campus, please open an iTerm window, run command
+
+ssh -L 54536:localhost:54536 xl1005@greene.hpc.nyu.edu
+
+If you are working off campus, you should already have ssh tunneling setup through HPC bastion host, 
+that you can directly login to greene with command
+
+ssh xl1005@greene
+
+Please open an iTerm window, run command
+
+ssh -L 54536:localhost:54536 xl1005@greene
+
+Step 2:
+
+Keep the iTerm windows in the previouse step open. Now open browser, find the line with
+
+The Jupyter Notebook is running at: cm021.hpc.nyu.edu
+
+the URL is something: http://localhost:54536/?token=XXXXXXXX (see your token below)
+
+you should be able to connect to jupyter notebook running remotly on greene compute node with above url
+
+[I 12:24:13.820 NotebookApp] Serving notebooks from local directory: /scratch/xl1005/deep-master
+[I 12:24:13.821 NotebookApp] Jupyter Notebook 6.1.5 is running at:
+[I 12:24:13.821 NotebookApp] http://localhost:54536/?token=3d70b424f10737e1d55e791c2f3b4966ca6cc6a9a1358688
+[I 12:24:13.821 NotebookApp]  or http://127.0.0.1:54536/?token=3d70b424f10737e1d55e791c2f3b4966ca6cc6a9a1358688
+[I 12:24:13.821 NotebookApp] Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).
+[C 12:24:13.854 NotebookApp] 
+    
+    To access the notebook, open this file in a browser:
+        file:///home/xl1005/.local/share/jupyter/runtime/nbserver-667764-open.html
+    Or copy and paste one of these URLs:
+        http://localhost:54536/?token=3d70b424f10737e1d55e791c2f3b4966ca6cc6a9a1358688
+     or http://127.0.0.1:54536/?token=3d70b424f10737e1d55e791c2f3b4966ca6cc6a9a1358688
+[I 12:24:47.869 NotebookApp] 302 GET /?token=3d70b424f10737e1d55e791c2f3b4966ca6cc6a9a1358688 (127.0.0.1) 0.41ms
+/ext3/miniconda3/envs/fourinarow/lib/python3.7/json/encoder.py:257: UserWarning: date_default is deprecated since jupyter_client 7.0.0. Use jupyter_client.jsonutil.json_default.
+  return _iterencode(o, 0)
+[W 12:25:03.245 NotebookApp] Notebook jupyter/play_with_human.ipynb is not trusted
+ERROR:asyncio:Exception in callback <TaskWakeupMethWrapper object at 0x147bba9ae890>(<Future finis...dd8"\r\n\r\n'>)
+handle: <Handle <TaskWakeupMethWrapper object at 0x147bba9ae890>(<Future finis...dd8"\r\n\r\n'>)>
+Traceback (most recent call last):
+  File "/ext3/miniconda3/envs/fourinarow/lib/python3.7/asyncio/events.py", line 88, in _run
+    self._context.run(self._callback, *self._args)
+RuntimeError: Cannot enter into task <Task pending coro=<HTTP1ServerConnection._server_request_loop() running at /home/xl1005/.local/lib/python3.7/site-packages/tornado/http1connection.py:823> wait_for=<Future finished result=b'GET /api/co...fdd8"\r\n\r\n'> cb=[IOLoop.add_future.<locals>.<lambda>() at /home/xl1005/.local/lib/python3.7/site-packages/tornado/ioloop.py:688]> while another task <Task pending coro=<KernelManager._async_start_kernel() running at /home/xl1005/.local/lib/python3.7/site-packages/jupyter_client/manager.py:352>> is being executed.
+ERROR:asyncio:Exception in callback <TaskWakeupMethWrapper object at 0x147bb9ed1810>(<Future finis...dd8"\r\n\r\n'>)
+handle: <Handle <TaskWakeupMethWrapper object at 0x147bb9ed1810>(<Future finis...dd8"\r\n\r\n'>)>
+Traceback (most recent call last):
+  File "/ext3/miniconda3/envs/fourinarow/lib/python3.7/asyncio/events.py", line 88, in _run
+    self._context.run(self._callback, *self._args)
+RuntimeError: Cannot enter into task <Task pending coro=<HTTP1ServerConnection._server_request_loop() running at /home/xl1005/.local/lib/python3.7/site-packages/tornado/http1connection.py:823> wait_for=<Future finished result=b'GET /kernel...fdd8"\r\n\r\n'> cb=[IOLoop.add_future.<locals>.<lambda>() at /home/xl1005/.local/lib/python3.7/site-packages/tornado/ioloop.py:688]> while another task <Task pending coro=<KernelManager._async_start_kernel() running at /home/xl1005/.local/lib/python3.7/site-packages/jupyter_client/manager.py:352>> is being executed.
+[I 12:25:03.683 NotebookApp] Kernel started: ac0f182c-7dc9-4bfd-9f07-2f0351176f38, name: python3
+/ext3/miniconda3/envs/fourinarow/lib/python3.7/json/encoder.py:257: UserWarning: date_default is deprecated since jupyter_client 7.0.0. Use jupyter_client.jsonutil.json_default.
+  return _iterencode(o, 0)
+[I 12:25:08.776 NotebookApp] Starting buffering for ac0f182c-7dc9-4bfd-9f07-2f0351176f38:1d2cbee4642840cb85eb375e48e5c0b0
+[I 12:25:08.783 NotebookApp] Kernel shutdown: ac0f182c-7dc9-4bfd-9f07-2f0351176f38
+ERROR:asyncio:Exception in callback <TaskWakeupMethWrapper object at 0x147bbaa36f50>(<Future finis...dd8"\r\n\r\n'>)
+handle: <Handle <TaskWakeupMethWrapper object at 0x147bbaa36f50>(<Future finis...dd8"\r\n\r\n'>)>
+Traceback (most recent call last):
+  File "/ext3/miniconda3/envs/fourinarow/lib/python3.7/asyncio/events.py", line 88, in _run
+    self._context.run(self._callback, *self._args)
+RuntimeError: Cannot enter into task <Task pending coro=<HTTP1ServerConnection._server_request_loop() running at /home/xl1005/.local/lib/python3.7/site-packages/tornado/http1connection.py:823> wait_for=<Future finished result=b'GET /kernel...fdd8"\r\n\r\n'> cb=[IOLoop.add_future.<locals>.<lambda>() at /home/xl1005/.local/lib/python3.7/site-packages/tornado/ioloop.py:688]> while another task <Task pending coro=<MultiKernelManager._async_shutdown_kernel() running at /home/xl1005/.local/lib/python3.7/site-packages/jupyter_client/multikernelmanager.py:225>> is being executed.
+[I 12:25:08.947 NotebookApp] Kernel started: 5fda3677-363d-43bd-95ce-ae225e5a6ff6, name: fourinarow
+[I 12:27:03.902 NotebookApp] Saving file at /jupyter/play_with_human.ipynb
+[W 12:27:03.903 NotebookApp] Notebook jupyter/play_with_human.ipynb is not trusted
+[I 14:11:28.419 NotebookApp] Starting buffering for 5fda3677-363d-43bd-95ce-ae225e5a6ff6:1d2cbee4642840cb85eb375e48e5c0b0
+[W 14:11:36.784 NotebookApp] Notebook jupyter/play_with_human.ipynb is not trusted
