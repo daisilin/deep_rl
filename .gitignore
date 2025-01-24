@@ -3,3 +3,12 @@
 /dist/
 /sftp-config.json
 .DS_Store
+/jupyter/
+/classes/mcts_old.py
+/classes/create_database_sz.py
+/classes/create_database_xl.py
+/classes/rsa_direc.py
+/classes/rsa_direc_2.py
+/classes/tournament_new.py
+/classes/tournament_new_sz.py
+/classes/tournament_new_xl.py

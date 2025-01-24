@@ -1,4 +1,14 @@
+"""
+Main training script for AlphaZero implementation.
+
+This script configures and launches the training process for an AlphaZero-style
+AI to play the game of Four-in-a-Row (also known as Connect Four).
+"""
+
 import logging
+import os
+import sys
+from typing import Optional
 
 import coloredlogs
 
@@ -7,122 +17,109 @@ import coach_no_reject as cnr
 from beck.beck_game import BeckGame as Game
 from beck.beck_nnet import NNetWrapper as nn
 from beck.beck_nnet import NNetWrapper_color as nnc
-from utils import *
-import sys
 import supervised_learning as sl
+from utils import dotdict
 
+# Configure logging
 log = logging.getLogger(__name__)
+coloredlogs.install(level='INFO')  # Change to DEBUG for more info
 
-coloredlogs.install(level='INFO')  # Change this to DEBUG to see more info.
+# Training configuration
+N_RES_BLOCKS = 3
+TRACK_COLOR = False
+CONTINUOUS_TRAINING = True
+TEMP_SWITCH = True
+C_PUCT = 2
+C_PUCT_STR = f'{C_PUCT:.0e}' if C_PUCT < 1 else str(C_PUCT)
 
-# checkpoint = '/scratch/zz737/fiar/run-3752918/scratch/zz737/fiar/tournaments/tournament_4/checkpoints_mcts100_cpuct2_id3/'
-loaded_iter = None#-1
-# checkpoint = '/scratch/zz737/fiar/tournaments/tournament_5/checkpoints_mcts100_cpuct2_id_1/'
-# checkpoint = '/scratch/zz737/fiar/tournaments/tournament_6/checkpoints_mcts100_cpuct2_id_1/'
-# checkpoint = '/scratch/xl1005/fiar/tournaments/tournament_17/checkpoints_mcts100_cpuct2_id_1/'
+# Checkpoint configuration
+LOADED_ITER: Optional[int] = None
+CHECKPOINT_PATH = f'/scratch/xl1005/deep-master/tournaments/tournament_21/checkpoints_mcts100_cpuct{C_PUCT_STR}_id_res{N_RES_BLOCKS}-1/'
 
-n_res=3
-TRACK_COLOR = False#True
-continuous_training =True #False
-tempswitch = True
-c_puct = 2
-c_puct_str = f'{c_puct:.0e}' if c_puct < 1 else str(c_puct)
-# checkpoint = f'/scratch/zz737/fiar/tournaments/tournament_8/checkpoints_mcts100_cpuct2_id_res{n_res}-0/'
-# checkpoint = f'/scratch/zz737/fiar/tournaments/tournament_9/checkpoints_mcts100_cpuct2_id_res{n_res}-1/'
-# checkpoint = f'/scratch/zz737/fiar/tournaments/tournament_11/checkpoints_mcts100_cpuct2_id_res{n_res}-0/'
-# checkpoint = f'/scratch/zz737/fiar/tournaments/tournament_12/checkpoints_mcts100_cpuct2_id_res{n_res}-0/'
-# checkpoint = f'/scratch/zz737/fiar/tournaments/tournament_13/checkpoints_mcts100_cpuct2_id_res{n_res}-0/'
-# checkpoint = f'/scratch/zz737/fiar/tournaments/tournament_10/checkpoints_mcts100_cpuct2_id_res{n_res}-0/'
-# checkpoint = '/scratch/zz737/fiar/tournaments/tournament_7/checkpoints_mcts100_cpuct2_id_1/'
-# checkpoint = 'E:\\Sam_data\\fiar\\tournaments\\tournament_1_win\\checkpoints_mcts100_cpuct2_id_0\\'
-# checkpoint = f'/scratch/zz737/fiar/tournaments/tournament_14/checkpoints_mcts100_cpuct2_id_res{n_res}-0/'
-# checkpoint = f'/scratch/zz737/fiar/tournaments/tournament_15/checkpoints_mcts100_cpuct2_id_res{n_res}-0/'
-# checkpoint = f'/scratch/zz737/fiar/tournaments/tournament_16/checkpoints_mcts100_cpuct2_id_res{n_res}-0/'
-# checkpoint = f'/scratch/zz737/fiar/tournaments/tournament_8/checkpoints_mcts100_cpuct{c_puct_str}_id_res{n_res}-1/'
-# checkpoint = f'/scratch/xl1005/deep-master/tournaments/tournament_17/checkpoints_mcts100_cpuct2_id_res9-1/'
-# checkpoint = f'/scratch/xl1005/deep-master/tournaments/tournament_18/checkpoints_mcts100_cpuct{c_puct_str}_id_res{n_res}-1/'
-# checkpoint = f'/scratch/xl1005/deep-master/tournaments/tournament_19/checkpoints_mcts100_cpuct{c_puct_str}_id_res{n_res}-6/'
-checkpoint = f'/scratch/xl1005/deep-master/tournaments/tournament_21/checkpoints_mcts100_cpuct{c_puct_str}_id_res{n_res}-1/'
-
-
-args = dotdict({
-    'numIters': 1000,
-    'numEps': 100,              # Number of complete self-play games to simulate during a new iteration.
-    'tempThreshold': 15 if tempswitch else 40,#15
-    'updateThreshold': 0.51,     # During arena playoff, new neural net will be accepted if threshold or more of games are won.
-    'maxlenOfQueue': 200000,    # Number of game examples to train the neural networks.
-    'numMCTSSims': 100,          # Number of games moves for MCTS to simulate.
-    'arenaCompare': 30,#2,#60,         # Number of games to play during arena play to determine if new net will be accepted.
-    'cpuct': c_puct,#2,
-
-    # 'checkpoint': './scratch/zz737/fiar/tournaments/tournament_4/checkpoints_mcts100_cpuct2_id10/',
-    'checkpoint': checkpoint,
-    'load_model': False,#True,#False,
-    'load_folder_file': (checkpoint,'best.pth.tar'),
-    # 'load_folder_file': (checkpoint,f'checkpoint_{loaded_iter}.pth.tar'),
-    'numItersForTrainExamplesHistory': 20,
-
-    'loaded_iter': loaded_iter, #[SZ] by default -1, if loading a checkpoint, use that iter 
-    'w_count':1, # by default 1, using visit count; if 0, use value
-    'flip_color':False, # by default False,
-    'dir_alpha':0.3,#0.3,#0.03,
-    'epsilon':0.25,#0.25,#0.25,
+# Training arguments
+TRAINING_ARGS = dotdict({
+    'numIters': 1000,                    # Total number of training iterations
+    'numEps': 100,                       # Number of self-play games per iteration
+    'tempThreshold': 15 if TEMP_SWITCH else 40,  # Temperature threshold for move selection
+    'updateThreshold': 0.51,             # Win ratio threshold for accepting new network
+    'maxlenOfQueue': 200000,             # Max number of game examples to store
+    'numMCTSSims': 100,                  # Number of MCTS simulations per move
+    'arenaCompare': 30,                  # Number of evaluation games
+    'cpuct': C_PUCT,                     # Exploration constant in MCTS
+    'checkpoint': CHECKPOINT_PATH,        # Path to save/load models
+    'load_model': False,                 # Whether to load existing model
+    'load_folder_file': (CHECKPOINT_PATH, 'best.pth.tar'),  # Model to load
+    'numItersForTrainExamplesHistory': 20,  # Number of iterations of history to keep
+    'loaded_iter': LOADED_ITER,          # Starting iteration number if loading model
+    'w_count': 1,                        # Use visit count (1) or value (0)
+    'flip_color': False,                 # Whether to flip colors
+    'dir_alpha': 0.3,                    # Dirichlet noise alpha parameter
+    'epsilon': 0.25,                     # Epsilon for noise in MCTS
 })
 
-
-def main(testmode=0):
-    '''
-    if testmode==1, then do testing
-    '''
+def main(test_mode: int = 0):
+    """Initialize and run the training process.
+    
+    Args:
+        test_mode: If 1, runs with reduced parameters for testing
+    """
+    # Initialize game
     log.info('Loading %s...', Game.__name__)
-    g = Game(4, 9, 4)
+    game = Game(4, 9, 4)  # 4x9 board with 4-in-a-row win condition
 
     log.info('Loading %s...', nn.__name__)
 
-    if not os.path.exists(args.checkpoint):
-        os.makedirs(args.checkpoint)
-        log.info('making dir %s', args.checkpoint)
+    # Create checkpoint directory if needed
+    if not os.path.exists(TRAINING_ARGS.checkpoint):
+        os.makedirs(TRAINING_ARGS.checkpoint)
+        log.info('Making directory %s', TRAINING_ARGS.checkpoint)
     
-    # using resnet
-    # onet = sl.OthelloNNet_resnet(g,sl.get_args(n_res=n_res, epochs=10, num_channels=256))
-    # onet = sl.OthelloNNet_resnet(g,sl.get_args(n_res=n_res, epochs=10, num_channels=256, track_color=True))
-    onet = sl.OthelloNNet_resnet(g,sl.get_args(n_res=n_res, epochs=10, num_channels=256, track_color=TRACK_COLOR))
-    if 'track_color' in onet.args.keys() and onet.args.track_color: #[SZ] for tracking color
-        nnet = nnc(g,nnet=onet,args=onet.args)
+    # Initialize neural network
+    nnet_args = sl.get_args(
+        n_res=N_RES_BLOCKS,
+        epochs=10,
+        num_channels=256,
+        track_color=TRACK_COLOR
+    )
+    base_network = sl.OthelloNNet_resnet(game, nnet_args)
+    
+    # Select appropriate wrapper based on color tracking
+    if 'track_color' in base_network.args.keys() and base_network.args.track_color:
+        nnet = nnc(game, nnet=base_network, args=base_network.args)
     else:
-        nnet = nn(g,nnet=onet,args=onet.args)
-    # nnet = nn(g)
+        nnet = nn(game, nnet=base_network, args=base_network.args)
 
-    if testmode:
-        nnet.args.epochs=5 # just train once
+    # Adjust parameters for test mode
+    if test_mode:
+        nnet.args.epochs = 5  # Reduced training epochs
+        TRAINING_ARGS.numEps = 3
+        TRAINING_ARGS.numIters = 5
+        TRAINING_ARGS.arenaCompare = 2
+        TRAINING_ARGS.numMCTSSims = 2
 
-    if args.load_model:
-        log.info('Loading checkpoint "%s/%s"...', args.load_folder_file[0], args.load_folder_file[1])
-        nnet.load_checkpoint(args.load_folder_file[0], args.load_folder_file[1])
+    # Load existing model if specified
+    if TRAINING_ARGS.load_model:
+        log.info('Loading checkpoint "%s/%s"...',
+                 TRAINING_ARGS.load_folder_file[0],
+                 TRAINING_ARGS.load_folder_file[1])
+        nnet.load_checkpoint(*TRAINING_ARGS.load_folder_file)
     else:
         log.warning('Not loading a checkpoint!')
 
+    # Initialize appropriate coach
     log.info('Loading the Coach...')
-    if testmode:
-        args.numEps = 3
-        args.numIters = 5
-        args.arenaCompare = 2
-        args.numMCTSSims = 2
-    
-    if continuous_training:
-        c = cnr.Coach(g, nnet, args)
-    else:
-        c = Coach(g, nnet, args)
+    coach_class = cnr.Coach if CONTINUOUS_TRAINING else Coach
+    coach = coach_class(game, nnet, TRAINING_ARGS)
 
-    if args.load_model:
+    # Load training examples if continuing from checkpoint
+    if TRAINING_ARGS.load_model:
         log.info("Loading 'trainExamples' from file...")
-        c.loadTrainExamples()
+        coach.loadTrainExamples()
 
+    # Start training process
     log.info('Starting the learning process 🎉')
-    c.learn()
-
+    coach.learn()
 
 if __name__ == "__main__":
-    main_args = sys.argv[1:]
-    print(main_args)
-    main(int(main_args[0]))
+    test_mode = int(sys.argv[1]) if len(sys.argv) > 1 else 0
+    main(test_mode)

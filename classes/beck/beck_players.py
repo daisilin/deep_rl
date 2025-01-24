@@ -1,117 +1,228 @@
+"""
+Player implementations for Four-in-a-Row game.
+
+This module provides different types of players:
+- Random player: Makes random valid moves
+- Human player: Accepts mouse input via Pygame interface
+- Greedy player: Makes moves that maximize immediate score
+- Neural network players: Uses trained networks for decision making
+"""
+
 import numpy as np
 import math
 import pygame
 import sys
+from typing import Tuple, List, Optional
 
-class RandomPlayer():
+class RandomPlayer:
+    """Player that makes random valid moves."""
+    
     def __init__(self, game):
+        """
+        Initialize random player.
+        
+        Args:
+            game: Game instance providing game mechanics
+        """
         self.game = game
 
-    def play(self, board):
-        a = np.random.randint(self.game.getActionSize())
+    def play(self, board: np.ndarray) -> int:
+        """
+        Select random valid move.
+        
+        Args:
+            board: Current game board state
+            
+        Returns:
+            int: Selected move index
+        """
         valids = self.game.getValidMoves(board, 1)
-        while valids[a] != 1:
-            a = np.random.randint(self.game.getActionSize())
-        return a
+        valid_moves = np.where(valids == 1)[0]
+        if len(valid_moves) == 0:
+            raise ValueError("No valid moves available")
+        return np.random.choice(valid_moves)
 
-
-class HumanBeckPlayer():
+class HumanBeckPlayer:
+    """Human player with Pygame mouse interface."""
+    
     def __init__(self, game):
+        """
+        Initialize human player.
+        
+        Args:
+            game: Game instance providing game mechanics
+        """
         self.game = game
+        self.SQUARE_SIZE = 100  # Pixel size of each board square
 
-    def play(self, board):
-        # display(board)
-        valid = self.game.getValidMoves(board, 1)
-        action_made = False
-        # for i in range(len(valid)):
-        #     if valid[i]:
-        #         print("[", int(i/self.game.n), int(i%self.game.n), end="] ")
-        while action_made == False:
+    def play(self, board: np.ndarray) -> int:
+        """
+        Get move from human via mouse input.
+        
+        Args:
+            board: Current game board state
+            
+        Returns:
+            int: Selected move index
+            
+        Raises:
+            SystemExit: If pygame window is closed
+        """
+        valid_moves = self.game.getValidMoves(board, 1)
+        
+        while True:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-
-                    sys.exit()     
+                    pygame.quit()
+                    sys.exit()
+                    
                 if event.type == pygame.MOUSEBUTTONDOWN:
-                    # print('beckplayer1')
+                    # Convert mouse position to board coordinates
+                    pos_x = event.pos[0]
+                    pos_y = event.pos[1]
+                    col = int(pos_x // self.SQUARE_SIZE)
+                    row = int(pos_y // self.SQUARE_SIZE)
+                    
+                    # Validate move
+                    if self._is_valid_position(row, col):
+                        move = self.game.n * row + col
+                        if valid_moves[move]:
+                            return move
+                            
+    def _is_valid_position(self, row: int, col: int) -> bool:
+        """Check if board position is valid."""
+        return (0 <= row < self.game.m) and (0 <= col < self.game.n)
 
-                    posx = event.pos[0]   
-                    posy = event.pos[1]
-                    col = int(math.floor(posx/100))
-                    row = int(math.floor(posy/100))
-                    #input_move = input()
-                    input_a = [row, col]
-                    print('input,',input_a)
-                    #input_a = input_move.split(" ")
-                    if len(input_a) == 2:
-                        # try:
-                        x,y = [int(i) for i in input_a]
-                        if ((0 <= x) and (x < self.game.m) and (0 <= y) and (y < self.game.n)):
-                        # or \
-                        # ((x == self.game.m) and (y == 0)):
-                            a = self.game.n * x + y if x != -1 else self.game.n ** 2
-                            if valid[a]:
-                                # print('beckplayercheck2')
-
-                                action_made=True
-                                    # break
-                        # except ValueError:
-                            # Input needs to be an integer
-                            # 'Invalid integer'
-                            # else:
-                            #     print('Invalid move')
-        return a
-
-
-class GreedyBeckPlayer():
+class GreedyBeckPlayer:
+    """Player that makes locally optimal moves."""
+    
     def __init__(self, game):
+        """
+        Initialize greedy player.
+        
+        Args:
+            game: Game instance providing game mechanics
+        """
         self.game = game
 
-    def play(self, board):
+    def play(self, board: np.ndarray) -> int:
+        """
+        Select move with highest immediate score.
+        
+        Args:
+            board: Current game board state
+            
+        Returns:
+            int: Selected move index
+            
+        Raises:
+            ValueError: If no valid moves available
+        """
         valids = self.game.getValidMoves(board, 1)
         candidates = []
-        for a in range(self.game.getActionSize()):
-            if valids[a] == 0:  # If the move is not valid...
-                continue        # don't consider it
-            nextBoard, _ = self.game.getNextState(board, 1, a)
-            score = self.game.getGameEnded(nextBoard, 1)
-            candidates += [(-score, a)]
+        
+        for action in range(self.game.getActionSize()):
+            if not valids[action]:
+                continue
+                
+            next_board, _ = self.game.getNextState(board, 1, action)
+            score = self.game.getGameEnded(next_board, 1)
+            candidates.append((-score, action))
+            
+        if not candidates:
+            raise ValueError("No valid moves available")
+            
         candidates.sort()
         return candidates[0][1]
 
-
-class NNPolicyPlayer():
-    '''
-    [SZ] nnet without mcts, using policy
-    '''
+class NNPolicyPlayer:
+    """Neural network player using policy network for decisions."""
+    
     def __init__(self, game, nnet):
-        self.game = game
-        self.nnet = nnet
-
-    def play(self, board):
-        valids = self.game.getValidMoves(board, 1)
-        p,v = self.nnet.predict(board)
-        p *= valids
-        return np.random.choice(np.nonzero(p==np.max(p))[0])
-
-class NNValuePlayer():
-    '''
-    [SZ] nnet without mcts, using value
-    '''
-    def __init__(self, game, nnet):
-        self.game = game
-        self.nnet = nnet
-
-    def play(self, board, curPlayer):
-        valids = self.game.getValidMoves(board, 1)
-        v_l = []
-        for action,valid in enumerate(valids): # valids is a mask of len action size
-            if valid:
-                board_next, curPlayer_next = self.game.getNextState(board, curPlayer, action)
-                p,v = self.nnet.predict(board_next * curPlayer_next) # to get the canonical board
-            else:
-                v = 1000 # a ridiculously large number that cannot be the min
-            v_l.append(np.squeeze(v))
+        """
+        Initialize policy network player.
         
-        return np.random.choice(np.nonzero(v_l==np.min(v_l))[0]), v_l
+        Args:
+            game: Game instance providing game mechanics
+            nnet: Neural network instance for predictions
+        """
+        self.game = game
+        self.nnet = nnet
 
+    def play(self, board: np.ndarray) -> int:
+        """
+        Select move based on policy network predictions.
+        
+        Args:
+            board: Current game board state
+            
+        Returns:
+            int: Selected move index
+            
+        Raises:
+            ValueError: If no valid moves available
+        """
+        valids = self.game.getValidMoves(board, 1)
+        if not np.any(valids):
+            raise ValueError("No valid moves available")
+            
+        policy, _ = self.nnet.predict(board)
+        policy *= valids  # Mask invalid moves
+        
+        # Select randomly among moves with highest probability
+        max_prob_moves = np.where(policy == np.max(policy))[0]
+        return np.random.choice(max_prob_moves)
 
+class NNValuePlayer:
+    """Neural network player using value network for decisions."""
+    
+    def __init__(self, game, nnet):
+        """
+        Initialize value network player.
+        
+        Args:
+            game: Game instance providing game mechanics
+            nnet: Neural network instance for predictions
+        """
+        self.game = game
+        self.nnet = nnet
+
+    def play(self, board: np.ndarray, cur_player: int) -> Tuple[int, List[float]]:
+        """
+        Select move based on value network predictions.
+        
+        Args:
+            board: Current game board state
+            cur_player: Current player (1 or -1)
+            
+        Returns:
+            tuple: (selected_move, value_predictions)
+                - selected_move: Index of selected move
+                - value_predictions: List of predicted values for each move
+                
+        Raises:
+            ValueError: If no valid moves available
+        """
+        valids = self.game.getValidMoves(board, 1)
+        if not np.any(valids):
+            raise ValueError("No valid moves available")
+            
+        value_predictions = []
+        LARGE_VALUE = 1000  # Value for invalid moves
+        
+        # Evaluate each valid move
+        for action, is_valid in enumerate(valids):
+            if is_valid:
+                next_board, next_player = self.game.getNextState(board, cur_player, action)
+                # Get canonical board for prediction
+                canonical_board = next_board * next_player
+                _, value = self.nnet.predict(canonical_board)
+                value_predictions.append(float(value))
+            else:
+                value_predictions.append(LARGE_VALUE)
+
+        # Select randomly among moves with minimum value
+        min_value_moves = np.where(value_predictions == np.min(value_predictions))[0]
+        selected_move = np.random.choice(min_value_moves)
+        
+        return selected_move, value_predictions

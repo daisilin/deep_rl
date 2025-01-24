@@ -1,129 +1,186 @@
 from __future__ import print_function
 import sys
-# sys.path.append('..')
 from os.path import dirname, abspath
-d = dirname(dirname(abspath(__file__))) # get parent dir in a robust way
-sys.path.append(d)
-
-from game import Game
-# from beck.beck_logic import Board
 import numpy as np
 from scipy.ndimage import convolve
 import pygame
+from game import Game
+
+# Add parent directory to path for imports
+d = dirname(dirname(abspath(__file__)))
+sys.path.append(d)
+
 class BeckGame(Game):
+    """
+    Implementation of the Beck variant of m,n,k-game (a generalization of tic-tac-toe).
+    Players take turns placing pieces on an m×n board, trying to get k pieces in a row.
+    
+    Attributes:
+        m (int): Number of rows on the board
+        n (int): Number of columns on the board
+        k (int): Number of pieces in a row needed to win
+        valid_wins (list): List of numpy arrays representing winning patterns
+        square_content (dict): Mapping of piece values to their string representations
+    """
+
     square_content = {
-        -1: "X",
-        +0: "-",
-        +1: "O"
+        -1: "X",  # Player 1's pieces
+        +0: "-",  # Empty space
+        +1: "O"   # Player 2's pieces
     }
 
-    @staticmethod
-    def getSquarePiece(piece):
-        return BeckGame.square_content[piece]
-
     def __init__(self, m, n, k):
-        # import fiarrl.classes.beck
-        # import classes.beck
+        """
+        Initialize the game board with dimensions m x n and winning condition k.
+
+        Args:
+            m (int): Number of rows
+            n (int): Number of columns
+            k (int): Number of pieces in a row needed to win
+            
+        Raises:
+            AssertionError: If k is larger than either board dimension
+        """
         assert k <= m and k <= n, "n-in-a-row must fit on the board all four ways!"
         self.m = m
         self.n = n
         self.k = k
         self.valid_wins = [
-            np.identity(k),
-            np.rot90(np.identity(k)),
-            np.ones((1,k)),
-            np.ones((k,1))
+            np.identity(k),               # Diagonal
+            np.rot90(np.identity(k)),     # Anti-diagonal
+            np.ones((1,k)),              # Horizontal
+            np.ones((k,1))               # Vertical
         ]
 
-    def getInitBoard(self,initboard=None):
-        # return initial board (numpy board)
+    @staticmethod
+    def getSquarePiece(piece):
+        """Convert numeric piece representation to string representation."""
+        return BeckGame.square_content[piece]
+
+    def getInitBoard(self, initboard=None):
+        """
+        Create initial game board or use provided board.
+
+        Args:
+            initboard (numpy.ndarray, optional): Initial board state
+
+        Returns:
+            numpy.ndarray: Initial board state
+        """
         if initboard is None:
-            pieces = [None]*self.m
-            for i in range(self.m):
-                pieces[i] = [0]*self.n
+            pieces = [[0] * self.n for _ in range(self.m)]
             return np.array(pieces)
-        else:
-            return initboard
+        return initboard
 
     def getBoardSize(self):
-        # (a,b) tuple
+        """Return board dimensions as (rows, columns)."""
         return (self.m, self.n)
 
     def getActionSize(self):
-        # return number of actions
-        return self.m*self.n
+        """Return total number of possible actions (board positions)."""
+        return self.m * self.n
 
     def getNextState(self, board, player, action):
-        # if player takes action on board, return next (board,player)
-        # action must be a valid move
-        # if action == self.n*self.n:    < --- no passing
-        #     return (board, -player)
-        x, y = (int(action/self.n), action%self.n)
+        """
+        Get the next board state after player takes an action.
+
+        Args:
+            board (numpy.ndarray): Current board state
+            player (int): Current player (1 or -1)
+            action (int): Action index (0 to m*n-1)
+
+        Returns:
+            tuple: (new_board, next_player)
+        """
+        x, y = divmod(action, self.n)
         new_board = np.copy(board)
         new_board[x][y] = player
         return (new_board, -player)
 
     def getValidMoves(self, board, player):
-        # return a fixed size binary vector
-        valids = (board == 0).flatten().astype(int)
-        return np.array(valids)
+        """
+        Get vector of valid moves for current board state.
 
-    def getValidMovesBatch(self,board_b,player):
-        #[SZ] b x nvalidmoves
-        valids=(board_b==0).reshape(board_b.shape[0],-1).astype(bool)
-        return np.array(valids)
+        Returns:
+            numpy.ndarray: Binary vector where 1 indicates valid move
+        """
+        return (board == 0).flatten().astype(int)
 
-    def get_next_step_boards(self,board_batch):
-        '''
-        [SZ]
-        board_batcch: b x game.m x game.n
-        input_expanded: (b x action_size) x game.m x game.n
-        valids: b x action_size
-        '''
-        
+    def getValidMovesBatch(self, board_b, player):
+        """
+        Get valid moves for a batch of board states.
+
+        Args:
+            board_b (numpy.ndarray): Batch of board states
+            player (int): Current player
+
+        Returns:
+            numpy.ndarray: Boolean array of valid moves for each board
+        """
+        return (board_b == 0).reshape(board_b.shape[0], -1).astype(bool)
+
+    def get_next_step_boards(self, board_batch):
+        """
+        Generate all possible next board states for a batch of current states.
+
+        Args:
+            board_batch (numpy.ndarray): Batch of current board states [b x game.m x game.n]
+
+        Returns:
+            tuple: (input_expanded, valids)
+                - input_expanded: All possible next states [(b x action_size) x game.m x game.n]
+                - valids: Valid moves mask [b x action_size]
+        """
         valids = self.getValidMovesBatch(board_batch, 1)
         action_size = self.getActionSize()
-        input_expanded = np.repeat(board_batch,action_size, axis=0) # repeat for : 1 2 -> 1 1 2 2
-        inds_to_be_placed = np.tile(np.arange(action_size),board_batch.shape[0]) # tile for: 1 2 -> 1 2 1 2
+        input_expanded = np.repeat(board_batch, action_size, axis=0)
+        inds_to_be_placed = np.tile(np.arange(action_size), board_batch.shape[0])
         xs, ys = inds_to_be_placed // self.n, inds_to_be_placed % self.n
         expanded_batch_inds = np.arange(input_expanded.shape[0])
         input_expanded[expanded_batch_inds, xs, ys] = 1
         return input_expanded, valids
 
-    def getGameEnded(self, board, player):        
+    def getGameEnded(self, board, player):
         """
-        Input:
-            board: current board
-            player: current player (1 or -1)
+        Check if the game has ended and return the result.
+
+        Args:
+            board (numpy.ndarray): Current board state
+            player (int): Current player (1 or -1)
+
         Returns:
-            r: 0 if game has not ended. 1 if player won, -1 if player lost,
-               small non-zero value for draw.
-               
+            float: 
+                0 if game ongoing
+                1 if player won
+                -1 if player lost
+                small non-zero value for draw
         """
         for p in [player, -player]:
             filtered_board = (board == p).astype(int)
             for win in self.valid_wins:
-                if self.k in convolve(
-                    filtered_board,
-                    win,
-                    mode='constant',
-                    cval=0.0,
-                    origin=0
-                ):
+                if self.k in convolve(filtered_board, win, mode='constant', cval=0.0, origin=0):
                     return (p * player)
 
         if (board != 0).sum() == self.m * self.n:
             return 0.0001
-        
         return 0
 
     def getCanonicalForm(self, board, player):
-        # return state if player==1, else return -state if player==-1
-        return player*board
+        """Return the canonical form of the board from player's perspective."""
+        return player * board
 
     def getSymmetries(self, board, pi):
-        # mirror, rotational
-        assert(len(pi) == self.m*self.n)  # 1 for pass
+        """
+        Get all symmetric board positions and their corresponding policies.
+
+        Args:
+            board (numpy.ndarray): Current board state
+            pi (numpy.ndarray): Policy vector
+
+        Returns:
+            list: List of (board, policy) tuples for all symmetries
+        """
+        assert len(pi) == self.m * self.n
         pi_board = np.reshape(pi, (self.m, self.n))
         return [
             (board, pi),
@@ -133,127 +190,117 @@ class BeckGame(Game):
         ]
 
     def stringRepresentation(self, board):
+        """Convert board to string representation for storage."""
         return board.tostring()
 
     def stringRepresentationReadable(self, board):
-        board_s = "".join(self.square_content[square] for row in board for square in row)
-        return board_s
+        """Convert board to human-readable string representation."""
+        return "".join(self.square_content[square] for row in board for square in row)
 
-    
-    def encode_pieces(self,board):
-        '''
-        return a dic of integer encoding of the black and white pieces on the board
-        '''
-        players=['bp','wp']
-        piece = [1,-1]
+    def encode_pieces(self, board):
+        """
+        Encode board state as integers for black and white pieces.
+
+        Returns:
+            dict: Encoded positions for black ('bp') and white ('wp') pieces
+        """
+        players = ['bp', 'wp']
+        piece = [1, -1]
         encoded = {}
-        for ii,p in enumerate(players):
-            row,col = np.nonzero(board==piece[ii])
-            enc = np.sum(2**(row * self.n + col))
+        for ii, p in enumerate(players):
+            row, col = np.nonzero(board == piece[ii])
+            enc = np.sum(2 ** (row * self.n + col))
             encoded[p] = enc
         return encoded
 
-
     @staticmethod
     def str_rep_to_array(board):
-        if isinstance(board, (bytes, bytearray)): # mcts boards encoded as bytes-like
+        """
+        Convert string representation back to numpy array.
+
+        Args:
+            board: String or bytes representation of board
+
+        Returns:
+            numpy.ndarray: Board state array
+        """
+        if isinstance(board, (bytes, bytearray)):
             return np.frombuffer(board, dtype=int)
         
-        else: # bfts boards encoded as readable strings
-            board_arr = []
-            for row in board.split('\n'):
-                row_arr = []
-                for s in row.split(' '):
-                    s = s.lstrip('[')
-                    s = s.rstrip(']')
-                    if s.lstrip('-').isnumeric():
-                        row_arr.append(int(s))
-                board_arr.append(row_arr)
-            return np.array(board_arr)
-        # str_rep_to_array = np.array([[int(i.rstrip(']')) for i in row.split(' ') if (i.lstrip('-').isnumeric() or i.rstrip(']').isnumeric() or i.rstrip(']').lstrip('-').isnumeric() or i.rstrip(']]').isnumeric() or i.rstrip(']]').lstrip('-').isnumeric()) ] for row in board.split('\n') ])
-        # return str_rep_to_array
+        board_arr = []
+        for row in board.split('\n'):
+            row_arr = []
+            for s in row.split(' '):
+                s = s.lstrip('[').rstrip(']')
+                if s.lstrip('-').isnumeric():
+                    row_arr.append(int(s))
+            board_arr.append(row_arr)
+        return np.array(board_arr)
 
     @staticmethod
     def get_board_from_xo_str(board_str):
-        '''
-        [SZ]
-        get the board, np array with 1/-1/0,
-        from a string like:
-        0 |- X - O X X O - - |
-    1 |- X O O O X - - - |
-    2 |- - - O - O X - - |
-    3 |- - - X O - X O - |
-         that comes from the display of a gameplay
-        '''
+        """
+        Convert display string representation to board array.
+
+        Args:
+            board_str (str): String representation with X, O, and - characters
+
+        Returns:
+            numpy.ndarray: Board state array with 1, -1, and 0 values
+        """
         board_arr = np.array(board_str.split(' '))
-        board_arr=np.array([s for s in board_arr if ('X' in s) or ('O' in s) or ('-' in s) ]).reshape(4,-1).astype('object')
-
+        board_arr = np.array([s for s in board_arr if ('X' in s) or ('O' in s) or ('-' in s)]).reshape(4, -1).astype('object')
         board_arr = np.array([-1 if 'X' in s else 1 if 'O' in s else 0 for s in board_arr.flatten()])
-        board_arr = board_arr.reshape(4,-1).astype(int)
-
-        return board_arr
-
-    # @staticmethod
-    # def display(board):
-    #     m = board.shape[0]
-    #     n = board.shape[1]
-    #     print("   ", end="")
-    #     for y in range(n):
-    #         print(y, end=" ")
-    #     print("")
-    #     print("-----------------------")
-    #     for y in range(m):
-    #         print(y, "|", end="")    # print the row #
-    #         for x in range(n):
-    #             piece = board[y][x]    # get the piece to print
-    #             print(BeckGame.square_content[piece], end=" ")
-    #         print("|")
-
-    #     print("-----------------------")
-
+        return board_arr.reshape(4, -1).astype(int)
 
     @staticmethod
-    def display(board,turn,player,game_num,gameover):
+    def display(board, turn, player, game_num, gameover):
+        """
+        Display the game board using Pygame.
 
-        m = board.shape[0] #row num
-        n = board.shape[1] #col num
-        BLACK = (0,0,0)
-        WHITE = (255,255,255)
+        Args:
+            board (numpy.ndarray): Current board state
+            turn (int): Current turn number
+            player (int): Current player
+            game_num (int): Game number
+            gameover (bool): Whether the game has ended
+        """
+        BLACK = (0, 0, 0)
+        WHITE = (255, 255, 255)
         DARK_BROWN = (222, 184, 135)
         LIGHT_BROWN = (255, 248, 220)
         SQUARESIZE = 100
         RADIUS = int(SQUARESIZE/2 - 5)
-        height = SQUARESIZE * (m+1)
+        
+        m, n = board.shape
+        height = SQUARESIZE * (m + 1)
         width = SQUARESIZE * n
-        size = (width, height)
+        
         pygame.init()
-        screen = pygame.display.set_mode(size)
-        # print('screen')
+        screen = pygame.display.set_mode((width, height))
         pygame.display.set_caption('4-in-a-row')
-        pygame.draw.rect(screen, LIGHT_BROWN, (0,0,width,height))
+        pygame.draw.rect(screen, LIGHT_BROWN, (0, 0, width, height))
 
         font = pygame.font.Font('freesansbold.ttf', 32)
-        if player == 1:
-            player_color = "black"
-        elif player ==-1: 
-            player_color = "white"
-        else:
-            player_color = 'draw'
+        player_color = "black" if player == 1 else "white" if player == -1 else "draw"
 
-        if gameover == False:
-            text = font.render("Game: " + str(game_num) +"/32  "+ "Turn: " + str(turn) + "  Player: "+ player_color, True, BLACK, LIGHT_BROWN)
-        elif gameover == True and player_color == 'draw':
-            text = font.render("Game over! Turn: "+ str(turn)+ "  Result: "+ player_color ,True, BLACK, LIGHT_BROWN) 
-        else: 
-            text = font.render("Game over! Turn: "+ str(turn)+ "  Result: "+ player_color +" wins",True, BLACK, LIGHT_BROWN) 
+        if not gameover:
+            text = font.render(f"Game: {game_num}/32  Turn: {turn}  Player: {player_color}", True, BLACK, LIGHT_BROWN)
+        elif player_color == 'draw':
+            text = font.render(f"Game over! Turn: {turn}  Result: {player_color}", True, BLACK, LIGHT_BROWN)
+        else:
+            text = font.render(f"Game over! Turn: {turn}  Result: {player_color} wins", True, BLACK, LIGHT_BROWN)
+
         textRect = text.get_rect()
-        textRect.center = (width//2, height*0.9)
-        # print('check1')
+        textRect.center = (width//2, height * 0.9)
         screen.blit(text, textRect)
 
         for row in range(m):
             for col in range(n):
-
-                colour = BLACK if board[row,col] == 1 else WHITE if board[row,col] == -1 else DARK_BROWN
-                pygame.draw.circle(screen, colour, (int(col*SQUARESIZE+SQUARESIZE/2), int(row*SQUARESIZE+SQUARESIZE/2)), RADIUS)
+                colour = BLACK if board[row, col] == 1 else WHITE if board[row, col] == -1 else DARK_BROWN
+                pygame.draw.circle(screen, colour, 
+                                 (int(col*SQUARESIZE + SQUARESIZE/2), 
+                                  int(row*SQUARESIZE + SQUARESIZE/2)), 
+                                 RADIUS)
+        
         pygame.display.update()
