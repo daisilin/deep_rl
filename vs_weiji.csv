@@ -1,9 +1,0 @@
-id,human_white,human_black,human_white_2,human_black_2
-tournament_8;mcts100;cpuct2e+00;id-res3-1;47,1.0,-1.0,1.0,1.0
-tournament_12;mcts100;cpuct2;id-res3-0;91,1.0,0.0001,1.0,1.0
-tournament_13;mcts100;cpuct2;id-res3-0;94,0.0001,-1.0,0.0001,0.0001
-tournament_14;mcts100;cpuct2;id-res9-0;42,1.0,1.0,-1.0,1.0
-tournament_16;mcts100;cpuct2;id-res3-0;44,1.0,0.0001,0.0001,0.0001
-tournament_16;mcts100;cpuct2;id-res3-0;52,0.0001,0.0001,0.0001,0.0001
-tournament_8;mcts100;cpuct2e+00;id-res3-1;71,1.0,-1.0,1.0,0.0001
-tournament_16;mcts100;cpuct2;id-res3-0;94,1.0,0.0001,1.0,0.0001
